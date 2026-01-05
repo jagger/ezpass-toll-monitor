@@ -358,7 +358,7 @@ if ($exitCode -eq 3) {
 1. **Login**: Connects to EZPass Maine website with your credentials
 2. **Session**: Saves session cookies to avoid repeated logins
 3. **Fetch**: Downloads toll data as CSV via API
-4. **Parse**: Processes CSV to extract toll transactions
+4. **Parse**: Processes CSV to extract toll transactions 
 5. **Analyze**: Counts discount-eligible tolls and calculates tier
 6. **Estimate**: Projects month-end totals based on daily average
 7. **Display**: Shows detailed report with discounted amounts
@@ -380,13 +380,7 @@ if ($exitCode -eq 3) {
 - `README.md` - This file
 - `QUICK-START.md` - Quick start guide
 - `NOTIFICATIONS-GUIDE.md` - Notification setup guide
-- `IMPROVEMENTS.md` - Recent improvements log
 
-## See Also
-
-- **[QUICK-START.md](QUICK-START.md)** - Get started in 5 minutes
-- **[NOTIFICATIONS-GUIDE.md](NOTIFICATIONS-GUIDE.md)** - Complete notification setup
-- **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Recent feature additions
 
 ## License
 
