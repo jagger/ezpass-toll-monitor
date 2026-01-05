@@ -1,8 +1,8 @@
-# 🚀 Quick Start Guide
+# Quick Start Guide
 
-## First Time Setup (2 minutes)
+Get started monitoring your Maine EZPass tolls in 5 minutes.
 
-### Step 1: Configure Your EZPass Credentials
+## Setup (One Time)
 
 Open PowerShell in this folder and run:
 
@@ -10,52 +10,57 @@ Open PowerShell in this folder and run:
 .\setup.ps1
 ```
 
-Enter your Maine EZPass username and password when prompted. This will save your credentials and test the connection.
+This interactive wizard will:
+1. Configure your EZPass credentials (encrypted)
+2. Optionally setup email notifications
+3. Optionally setup SMS notifications
+4. Test the connection
+5. Save everything securely
 
-### Step 2: Setup Email Notifications (Optional)
-
-```powershell
-.\setup-email.ps1
-```
-
-Follow the wizard to configure email alerts. **For Gmail users**: You'll need to create an App Password (requires 2FA).
-
----
+**For Gmail users:** You'll need to create an App Password (requires 2FA enabled).
 
 ## Daily Use
 
-### Check Your Toll Status
+### Quick Check
 
-**Easy way** - Just double-click:
+**Easy way** - Double-click:
 ```
 check-tolls.bat
 ```
 
-**PowerShell way**:
+**PowerShell way:**
 ```powershell
 .\check-tolls.ps1 -Estimate
 ```
 
-### Get Email Alert
+### Send Notifications
 
+**Email (detailed report):**
 ```powershell
 .\notify-email.ps1
 ```
 
-### Get Windows Notification
+**SMS (compact alert):**
+```powershell
+.\notify-sms.ps1
+```
 
+**Windows Toast:**
 ```powershell
 .\notify-toast.ps1
 ```
 
----
+## Understanding Your Status
 
-## Understanding Your Results
+### Discount Tiers
 
-### Sample Output
+- **0-29 tolls/month**: No discount
+- **30-39 tolls/month**: 20% discount (Bronze)
+- **40+ tolls/month**: 40% discount (Gold) - Maximum savings!
+
+### Example Output
 
 ```
-============================================================
 TOLL REPORT FOR 1/2026
 ============================================================
 Total tolls posted: 35
@@ -66,142 +71,65 @@ Current day: 15 of 31
 Estimated month-end discount-eligible tolls: 72.3
 ============================================================
 
-📊 Projected Discount Tier: Gold
+>> Projected Discount Tier: Gold
    40% discount - Maximum savings!
    Estimated: 72.3 tolls
 ```
 
-### Discount Tiers
+### SMS Format
 
-| Tolls/Month | Discount | Tier |
-|-------------|----------|------|
-| 0-29 | 0% | None |
-| 30-39 | 20% | Bronze |
-| 40+ | 40% | Gold |
+Compact progress bar for text messages:
 
----
+```
+EZPass: [█████░░░] 35/40
+Bronze 20% | 5→Gold +$6.20
+```
 
 ## Automation
 
-### Weekly Email Report
+Set up weekly email reports using Windows Task Scheduler:
 
-Set this up once and forget it:
-
-1. Open **Task Scheduler** (Win+R → `taskschd.msc`)
-2. Click **Create Basic Task**
-3. Name: `EZPass Weekly Report`
-4. Trigger: **Weekly, Friday at 6:00 PM**
-5. Action: **Start a program**
+1. Open Task Scheduler (`Win+R` → `taskschd.msc`)
+2. Create Basic Task
+3. **Trigger:** Weekly, Friday at 6 PM
+4. **Action:** Start a program
    - Program: `powershell.exe`
-   - Arguments: `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Users\jagge\Documents\tolls\notify-email.ps1"`
-   - Start in: `C:\Users\jagge\Documents\tolls`
-6. Click **Finish**
+   - Arguments: `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\path\to\notify-email.ps1"`
 
-Now you'll automatically get an email every Friday with your toll status!
-
----
-
-## Files in This Folder
+## Files
 
 | File | Purpose |
 |------|---------|
-| `check-tolls.ps1` | Main script - checks toll count |
-| `notify-email.ps1` | Send email notifications |
-| `notify-toast.ps1` | Show Windows notifications |
-| `setup.ps1` | Interactive setup for credentials |
-| `setup-email.ps1` | Interactive email setup |
+| `setup.ps1` | Interactive configuration wizard |
+| `check-tolls.ps1` | Main toll checking script |
 | `check-tolls.bat` | Double-click launcher |
-| `config.json` | Your saved credentials |
-| `email-config.json` | Your saved email settings |
-| `README.md` | Complete documentation |
-| `NOTIFICATIONS-GUIDE.md` | Detailed notification setup |
-| `QUICK-START.md` | This file! |
+| `notify-email.ps1` | Email notifications |
+| `notify-sms.ps1` | SMS notifications |
+| `notify-toast.ps1` | Desktop notifications |
+| `~\.ezpass\config.xml` | Your encrypted settings |
 
----
+## Next Steps
 
-## Common Questions
+- **Automation:** Set up Task Scheduler for weekly reports
+- **Notifications:** See `NOTIFICATIONS.md` for detailed setup
+- **Configuration:** See `CONFIGURATION.md` for advanced options
+- **Full Docs:** See `README.md` for complete documentation
 
-**Q: How accurate is the estimate?**
-A: It calculates your daily average and projects to month-end. Accuracy improves as the month progresses.
+## Troubleshooting
 
-**Q: When should I check?**
-A: Mid-month (around the 15th) gives a good projection. Check again near month-end if you're close to a tier boundary.
-
-**Q: I'm at 35 tolls projected - should I use the turnpike more?**
-A: You're in the Bronze tier (20% discount). If you can add 5+ more trips, you'll jump to Gold tier (40% discount). Run the numbers to see if the extra trips are worth it!
-
-**Q: I'm at 28 tolls projected - what should I do?**
-A: You're close to no discount. Either:
-- Add 2+ trips to reach Bronze (20% discount)
-- Or stay under 30 if you don't need the discount
-
-**Q: Are my credentials secure?**
-A: They're stored in plain text `config.json` file. Keep this file secure and don't share it. Consider setting file permissions to restrict access.
-
-**Q: Can I check previous months?**
-A: Yes! Use: `.\check-tolls.ps1 -Month 12 -Year 2025`
-
-**Q: My login fails**
-A: Verify your credentials work at https://ezpassmaineturnpike.com. If they work there but not in the script, the website structure may have changed.
-
----
-
-## Gmail App Password Setup
-
-If using Gmail for notifications:
-
-1. Go to https://myaccount.google.com/security
-2. Enable **2-Step Verification** (if not already on)
-3. Go to https://myaccount.google.com/apppasswords
-4. Select **Mail** and **Windows Computer**
-5. Click **Generate**
-6. Copy the 16-character password
-7. Use this in `setup-email.ps1` (NOT your regular Gmail password)
-
----
-
-## Getting Help
-
-- 📖 **Complete docs**: See `README.md`
-- 📧 **Notification setup**: See `NOTIFICATIONS-GUIDE.md`
-- 🐛 **Issues**: Check the Troubleshooting sections in README.md
-
----
-
-## Tips & Tricks
-
-### Check Multiple Months
-
+**Can't run scripts?**
 ```powershell
-# Check last 3 months
-foreach ($i in 1..3) {
-    $date = (Get-Date).AddMonths(-$i)
-    .\check-tolls.ps1 -Month $date.Month -Year $date.Year
-}
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### Get SMS + Email
+**Email not sending?**
+- Gmail: Use App Password, not regular password
+- Run `.\setup.ps1` to reconfigure
 
-Create `notify-all.ps1`:
-```powershell
-# Email to inbox
-.\notify-email.ps1 -To "you@gmail.com"
+**Wrong toll counts?**
+- Verify credentials at https://ezpassmaineturnpike.com
+- Run `.\setup.ps1` to update credentials
 
-# SMS via email-to-text
-.\notify-email.ps1 -To "5555551234@vtext.com"
-```
-
-### Monthly Summary
-
-Run this on the last day of the month:
-```powershell
-.\check-tolls.ps1 -Verbose | Out-File "toll-summary-$(Get-Date -Format 'yyyy-MM').txt"
-```
-
----
-
-## Support
-
-This is a community-created tool. If you find it useful, consider sharing it with other Maine EZPass users!
-
-**Disclaimer**: This tool is not affiliated with Maine Turnpike Authority. Always verify toll information on the official website.
+**Need help?**
+- Check `README.md` for detailed documentation
+- See `NOTIFICATIONS.md` for notification troubleshooting

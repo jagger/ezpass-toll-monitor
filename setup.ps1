@@ -191,6 +191,107 @@ if ($emailChoice -eq "1") {
 }
 
 # ============================================================
+# SMS Notifications (Optional)
+# ============================================================
+Write-Host ""
+Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host "SMS Notifications (Optional)" -ForegroundColor White
+Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Would you like to set up SMS notifications?" -ForegroundColor Cyan
+Write-Host "Note: SMS uses email-to-SMS gateways (requires email config above)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  1. Yes - Configure SMS notifications" -ForegroundColor White
+Write-Host "  2. No - Skip SMS setup" -ForegroundColor White
+Write-Host ""
+
+$smsChoice = Read-Host "Enter choice (1-2)"
+
+if ($smsChoice -eq "1" -and $emailChoice -eq "1") {
+    # Carrier selection
+    Write-Host ""
+    Write-Host "Select your mobile carrier:" -ForegroundColor Cyan
+    Write-Host "  1. Verizon" -ForegroundColor White
+    Write-Host "  2. AT&T" -ForegroundColor White
+    Write-Host "  3. T-Mobile" -ForegroundColor White
+    Write-Host "  4. Sprint" -ForegroundColor White
+    Write-Host "  5. Other (enter custom gateway)" -ForegroundColor White
+    Write-Host ""
+
+    $carrier = Read-Host "Enter choice (1-5)"
+
+    $smsGateway = ""
+    switch ($carrier) {
+        "1" { $smsGateway = "@vtext.com" }
+        "2" { $smsGateway = "@txt.att.net" }
+        "3" { $smsGateway = "@tmomail.net" }
+        "4" { $smsGateway = "@messaging.sprintpcs.com" }
+        "5" {
+            Write-Host ""
+            $smsGateway = Read-Host "Email-to-SMS gateway (e.g., @carrier.com)"
+            if (-not $smsGateway.StartsWith("@")) {
+                $smsGateway = "@" + $smsGateway
+            }
+        }
+        default {
+            Write-Host "Invalid choice, skipping SMS setup" -ForegroundColor Yellow
+            $smsChoice = "2"
+        }
+    }
+
+    if ($smsChoice -eq "1") {
+        Write-Host ""
+        $phoneNumber = Read-Host "Your 10-digit phone number (digits only)"
+
+        # Clean phone number (remove any non-digits)
+        $phoneNumber = $phoneNumber -replace '\D', ''
+
+        if ($phoneNumber.Length -ne 10) {
+            Write-Host "Invalid phone number, skipping SMS setup" -ForegroundColor Yellow
+            $smsChoice = "2"
+        } else {
+            $smsAddress = $phoneNumber + $smsGateway
+
+            # Optional: selective notifications (same as email)
+            Write-Host ""
+            Write-Host "SMS notification preferences:" -ForegroundColor Cyan
+            Write-Host "  1. All tiers (always notify)" -ForegroundColor White
+            Write-Host "  2. Only Bronze + Gold (20% and 40% discount tiers)" -ForegroundColor White
+            Write-Host "  3. Only Gold (40% discount tier only)" -ForegroundColor White
+            Write-Host "  4. Only when no discount" -ForegroundColor White
+            Write-Host ""
+
+            $smsTierChoice = Read-Host "Enter choice (1-4, default: 1)"
+
+            $smsOnlyAlertOnTiers = switch ($smsTierChoice) {
+                "2" { "Bronze,Gold" }
+                "3" { "Gold" }
+                "4" { "None" }
+                default { "" }
+            }
+
+            # Save SMS configuration
+            $config.SMS = @{
+                To = $smsAddress
+                OnlyAlertOnTiers = $smsOnlyAlertOnTiers
+                Carrier = if ($carrier -eq "5") { "Custom" } else { @("Verizon", "AT&T", "T-Mobile", "Sprint")[$carrier - 1] }
+            }
+
+            Write-Host ""
+            Write-Host "[OK] SMS configuration saved" -ForegroundColor Green
+            Write-Host "SMS will be sent to: $smsAddress" -ForegroundColor Cyan
+        }
+    }
+} elseif ($smsChoice -eq "1") {
+    Write-Host ""
+    Write-Host "SMS requires email configuration (SMS uses email gateways)" -ForegroundColor Yellow
+    Write-Host "Please configure email first, then run setup again for SMS" -ForegroundColor Yellow
+} else {
+    Write-Host ""
+    Write-Host "SMS setup skipped" -ForegroundColor Gray
+}
+
+# ============================================================
 # Save Configuration
 # ============================================================
 Write-Host ""
@@ -265,6 +366,34 @@ try {
             }
         }
 
+        # Test SMS if configured
+        if ($smsChoice -eq "1") {
+            Write-Host ""
+            $testSms = Read-Host "Would you like to send a test SMS? (yes/no)"
+
+            if ($testSms -eq "yes") {
+                Write-Host ""
+                Write-Host "Sending test SMS..." -ForegroundColor Cyan
+
+                try {
+                    & ".\notify-sms.ps1"
+
+                    Write-Host ""
+                    Write-Host "[OK] Test SMS sent!" -ForegroundColor Green
+                    Write-Host "Check your phone at: $smsAddress" -ForegroundColor Cyan
+                } catch {
+                    Write-Host ""
+                    Write-Host "WARNING: Test SMS failed" -ForegroundColor Yellow
+                    Write-Host "Error: $_" -ForegroundColor Red
+                    Write-Host ""
+                    Write-Host "Common issues:" -ForegroundColor Yellow
+                    Write-Host "  - Verify your carrier's email-to-SMS gateway is correct" -ForegroundColor Gray
+                    Write-Host "  - Some carriers may have delays (wait 1-2 minutes)" -ForegroundColor Gray
+                    Write-Host "  - Try running: .\notify-sms.ps1 to test again" -ForegroundColor Gray
+                }
+            }
+        }
+
         Write-Host ""
         Write-Host "=" * 70 -ForegroundColor Green
         Write-Host "Setup Complete!" -ForegroundColor Green
@@ -272,9 +401,14 @@ try {
         Write-Host ""
         Write-Host "You can now run:" -ForegroundColor Cyan
         Write-Host "  .\check-tolls.ps1 -Estimate       # Check your tolls" -ForegroundColor White
+        Write-Host "  .\check-tolls.ps1 -Estimate -SmsFormat  # Check in SMS format" -ForegroundColor White
 
         if ($emailChoice -eq "1") {
             Write-Host "  .\notify-email.ps1                # Send email notification" -ForegroundColor White
+        }
+
+        if ($smsChoice -eq "1") {
+            Write-Host "  .\notify-sms.ps1                  # Send SMS notification" -ForegroundColor White
         }
 
         Write-Host ""

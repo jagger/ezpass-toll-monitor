@@ -49,7 +49,8 @@ param(
     [switch]$Verbose,
     [switch]$SaveConfig,
     [switch]$EmailOutput,
-    [switch]$DownloadFile
+    [switch]$DownloadFile,
+    [switch]$SmsFormat
 )
 
 # Secure config location in user home directory
@@ -504,6 +505,70 @@ function Write-Output-Line {
         Write-Output $Text
     } else {
         Write-Host $Text -ForegroundColor $Color
+    }
+}
+
+# SMS Format Output (compact for text messages)
+if ($SmsFormat) {
+    # Calculate estimation if in current month
+    $estimatedTotal = $discountEligible
+    if ($Estimate -and $Year -eq $now.Year -and $Month -eq $now.Month) {
+        $currentDay = $now.Day
+        $daysInMonth = [DateTime]::DaysInMonth($Year, $Month)
+        if ($currentDay -gt 0) {
+            $dailyAverage = $discountEligible / $currentDay
+            $estimatedTotal = $dailyAverage * $daysInMonth
+        }
+    }
+
+    # Function to generate progress bar
+    function Get-ProgressBar {
+        param([int]$current, [int]$target = 40, [int]$width = 8)
+        $filled = [Math]::Min([Math]::Floor(($current / $target) * $width), $width)
+        $empty = $width - $filled
+        return ('[' + ('█' * $filled) + ('░' * $empty) + ']')
+    }
+
+    # Determine tier
+    $tollCount = if ($Estimate) { [int]$estimatedTotal } else { $discountEligible }
+    $tier = if ($tollCount -ge 40) { "Gold" } elseif ($tollCount -ge 30) { "Bronze" } else { "None" }
+
+    # Calculate total toll amount for savings
+    $totalAmount = 0.0
+    foreach ($toll in $tollDetails) {
+        if ($toll.DiscountEligible -eq 'Yes') {
+            $totalAmount += $toll.Amount
+        }
+    }
+
+    # Generate SMS output
+    $progressBar = Get-ProgressBar -current $tollCount -target 40
+
+    if ($tier -eq "Gold") {
+        $savings = $totalAmount * 0.40
+        Write-Output "EZPass: $progressBar $tollCount/40"
+        Write-Output "Gold 40% | -`$$([Math]::Round($savings, 2))/mo"
+    }
+    elseif ($tier -eq "Bronze") {
+        $needed = 40 - $tollCount
+        $additionalSavings = $totalAmount * 0.20  # Additional savings from going 20% to 40%
+        Write-Output "EZPass: $progressBar $tollCount/40"
+        Write-Output "Bronze 20% | $needed→Gold +`$$([Math]::Round($additionalSavings, 2))"
+    }
+    else {
+        $potentialSavings = $totalAmount * 0.40
+        $estDisplay = if ($Estimate) { "Est $([Math]::Round($estimatedTotal, 0))" } else { "$tollCount" }
+        Write-Output "EZPass: $progressBar $tollCount/40"
+        Write-Output "$estDisplay → Gold -`$$([Math]::Round($potentialSavings, 2))"
+    }
+
+    # Set exit code based on tier
+    if ($tier -eq "Gold") {
+        exit 1
+    } elseif ($tier -eq "Bronze") {
+        exit 2
+    } else {
+        exit 3
     }
 }
 
