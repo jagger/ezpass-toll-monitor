@@ -1,0 +1,26 @@
+# Sensitive configuration files
+config.xml
+*.json
+
+# Session cache
+cookies.xml
+
+# CSV data files
+*.csv
+toll-data-*.csv
+
+# PowerShell module cache
+*.psm1
+
+# Windows thumbnail cache
+Thumbs.db
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
