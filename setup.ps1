@@ -3,13 +3,13 @@
 Setup script for Maine EZPass Toll Monitor
 
 .DESCRIPTION
-Interactive setup to configure EZPass credentials and optional email notifications.
+Interactive setup to configure EZPass credentials and optional email/SMS notifications.
 All credentials are encrypted and stored securely in your user profile.
 #>
 
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "Maine EZPass Toll Monitor - Setup" -ForegroundColor White
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host ""
 
 # Secure config location
@@ -18,19 +18,26 @@ $configFile = Join-Path $configDir "config.xml"
 
 # Check if config already exists
 $existingConfig = $null
+$isUpdate = $false
 if (Test-Path $configFile) {
-    Write-Host "WARNING: Configuration already exists!" -ForegroundColor Yellow
-    $overwrite = Read-Host "Do you want to update it? (yes/no)"
-    if ($overwrite -ne "yes") {
+    Write-Host "Configuration found!" -ForegroundColor Green
+    Write-Host "Current settings will be shown (passwords hidden)" -ForegroundColor Gray
+    Write-Host "Press Enter to keep existing values, or type new values to update" -ForegroundColor Gray
+    Write-Host ""
+
+    $continue = Read-Host "Continue with update? (yes/no)"
+    if ($continue -ne "yes") {
         Write-Host "Setup cancelled." -ForegroundColor Yellow
         exit 0
     }
 
-    # Load existing config to preserve settings we're not updating
+    # Load existing config
     try {
         $existingConfig = Import-Clixml -Path $configFile
+        $isUpdate = $true
     } catch {
         Write-Warning "Could not load existing config: $_"
+        $existingConfig = $null
     }
 }
 
@@ -41,6 +48,7 @@ if ($existingConfig) {
     $config = @{
         EZPass = @{}
         Email = @{}
+        SMS = @{}
     }
 }
 
@@ -48,16 +56,38 @@ if ($existingConfig) {
 # EZPass Credentials
 # ============================================================
 Write-Host ""
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "EZPass Credentials" -ForegroundColor White
-Write-Host "=" * 70 -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Please enter your Maine EZPass credentials:" -ForegroundColor Cyan
-Write-Host "(These will be encrypted and stored in: $configFile)" -ForegroundColor Gray
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host ""
 
-$username = Read-Host "EZPass Username"
-$passwordSecure = Read-Host "EZPass Password" -AsSecureString
+if ($isUpdate -and $config.EZPass.Username) {
+    Write-Host "Current username: $($config.EZPass.Username)" -ForegroundColor Gray
+    Write-Host ""
+    $usernameInput = Read-Host "EZPass Username (press Enter to keep current)"
+    if ([string]::IsNullOrWhiteSpace($usernameInput)) {
+        $username = $config.EZPass.Username
+        Write-Host "Keeping existing username" -ForegroundColor Gray
+    } else {
+        $username = $usernameInput
+    }
+
+    Write-Host ""
+    $updatePassword = Read-Host "Update password? (yes/no)"
+    if ($updatePassword -eq "yes") {
+        $passwordSecure = Read-Host "EZPass Password" -AsSecureString
+    } else {
+        $passwordSecure = $config.EZPass.Password
+        Write-Host "Keeping existing password" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "Please enter your Maine EZPass credentials:" -ForegroundColor Cyan
+    Write-Host "(These will be encrypted and stored in: $configFile)" -ForegroundColor Gray
+    Write-Host ""
+
+    $username = Read-Host "EZPass Username"
+    $passwordSecure = Read-Host "EZPass Password" -AsSecureString
+}
 
 if (-not $username -or $passwordSecure.Length -eq 0) {
     Write-Host "Error: Username and password cannot be empty" -ForegroundColor Red
@@ -75,19 +105,39 @@ Write-Host "[OK] EZPass credentials saved" -ForegroundColor Green
 # Email Notifications (Optional)
 # ============================================================
 Write-Host ""
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "Email Notifications (Optional)" -ForegroundColor White
-Write-Host "=" * 70 -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Would you like to set up email notifications?" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  1. Yes - Configure email notifications" -ForegroundColor White
-Write-Host "  2. No - Skip email setup" -ForegroundColor White
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host ""
 
-$emailChoice = Read-Host "Enter choice (1-2)"
+$emailChoice = "2"
+if ($isUpdate -and $config.Email.SmtpServer) {
+    Write-Host "Email is currently configured:" -ForegroundColor Green
+    Write-Host "  From: $($config.Email.From)" -ForegroundColor Gray
+    Write-Host "  To: $($config.Email.To)" -ForegroundColor Gray
+    Write-Host "  SMTP: $($config.Email.SmtpServer):$($config.Email.Port)" -ForegroundColor Gray
+    Write-Host ""
+    $updateEmail = Read-Host "Update email configuration? (yes/no/skip)"
 
-if ($emailChoice -eq "1") {
+    if ($updateEmail -eq "skip") {
+        $emailChoice = "1"  # Keep existing
+        Write-Host "Keeping existing email configuration" -ForegroundColor Gray
+    } elseif ($updateEmail -ne "yes") {
+        $emailChoice = "2"  # Skip
+    } else {
+        $emailChoice = "1"  # Reconfigure
+    }
+} else {
+    Write-Host "Would you like to set up email notifications?" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  1. Yes - Configure email notifications" -ForegroundColor White
+    Write-Host "  2. No - Skip email setup" -ForegroundColor White
+    Write-Host ""
+
+    $emailChoice = Read-Host "Enter choice (1-2)"
+}
+
+if ($emailChoice -eq "1" -and $updateEmail -ne "skip") {
     # Provider selection
     Write-Host ""
     Write-Host "Select your email provider:" -ForegroundColor Cyan
@@ -186,28 +236,55 @@ if ($emailChoice -eq "1") {
         Write-Host "[OK] Email configuration saved" -ForegroundColor Green
     }
 } else {
-    Write-Host ""
-    Write-Host "Email setup skipped" -ForegroundColor Gray
+    if ($emailChoice -ne "1") {
+        Write-Host ""
+        Write-Host "Email setup skipped" -ForegroundColor Gray
+    }
 }
 
 # ============================================================
 # SMS Notifications (Optional)
 # ============================================================
 Write-Host ""
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "SMS Notifications (Optional)" -ForegroundColor White
-Write-Host "=" * 70 -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Would you like to set up SMS notifications?" -ForegroundColor Cyan
-Write-Host "Note: SMS uses email-to-SMS gateways (requires email config above)" -ForegroundColor Gray
-Write-Host ""
-Write-Host "  1. Yes - Configure SMS notifications" -ForegroundColor White
-Write-Host "  2. No - Skip SMS setup" -ForegroundColor White
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host ""
 
-$smsChoice = Read-Host "Enter choice (1-2)"
+$smsChoice = "2"
+if ($isUpdate -and $config.SMS.To) {
+    Write-Host "SMS is currently configured:" -ForegroundColor Green
+    Write-Host "  To: $($config.SMS.To)" -ForegroundColor Gray
+    Write-Host "  Carrier: $($config.SMS.Carrier)" -ForegroundColor Gray
+    Write-Host ""
+    $updateSms = Read-Host "Update SMS configuration? (yes/no/skip)"
 
-if ($smsChoice -eq "1" -and $emailChoice -eq "1") {
+    if ($updateSms -eq "skip") {
+        $smsChoice = "1"  # Keep existing
+        Write-Host "Keeping existing SMS configuration" -ForegroundColor Gray
+    } elseif ($updateSms -ne "yes") {
+        $smsChoice = "2"  # Skip
+    } else {
+        $smsChoice = "1"  # Reconfigure
+    }
+} else {
+    if ($config.Email.SmtpServer) {
+        Write-Host "Would you like to set up SMS notifications?" -ForegroundColor Cyan
+        Write-Host "Note: SMS uses email-to-SMS gateways (requires email config above)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "  1. Yes - Configure SMS notifications" -ForegroundColor White
+        Write-Host "  2. No - Skip SMS setup" -ForegroundColor White
+        Write-Host ""
+
+        $smsChoice = Read-Host "Enter choice (1-2)"
+    } else {
+        Write-Host "SMS requires email configuration (uses SMTP for email-to-SMS gateways)" -ForegroundColor Yellow
+        Write-Host "Email was not configured, skipping SMS setup" -ForegroundColor Gray
+        $smsChoice = "2"
+    }
+}
+
+if ($smsChoice -eq "1" -and $updateSms -ne "skip" -and $config.Email.SmtpServer) {
     # Carrier selection
     Write-Host ""
     Write-Host "Select your mobile carrier:" -ForegroundColor Cyan
@@ -274,7 +351,7 @@ if ($smsChoice -eq "1" -and $emailChoice -eq "1") {
             $config.SMS = @{
                 To = $smsAddress
                 OnlyAlertOnTiers = $smsOnlyAlertOnTiers
-                Carrier = if ($carrier -eq "5") { "Custom" } else { @("Verizon", "AT&T", "T-Mobile", "Sprint")[$carrier - 1] }
+                Carrier = if ($carrier -eq "5") { "Custom" } else { @("Verizon", "AT&T", "T-Mobile", "Sprint")[[int]$carrier - 1] }
             }
 
             Write-Host ""
@@ -282,22 +359,20 @@ if ($smsChoice -eq "1" -and $emailChoice -eq "1") {
             Write-Host "SMS will be sent to: $smsAddress" -ForegroundColor Cyan
         }
     }
-} elseif ($smsChoice -eq "1") {
-    Write-Host ""
-    Write-Host "SMS requires email configuration (SMS uses email gateways)" -ForegroundColor Yellow
-    Write-Host "Please configure email first, then run setup again for SMS" -ForegroundColor Yellow
 } else {
-    Write-Host ""
-    Write-Host "SMS setup skipped" -ForegroundColor Gray
+    if ($smsChoice -ne "1") {
+        Write-Host ""
+        Write-Host "SMS setup skipped" -ForegroundColor Gray
+    }
 }
 
 # ============================================================
 # Save Configuration
 # ============================================================
 Write-Host ""
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "Saving configuration..." -ForegroundColor Cyan
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 
 # Create config directory if it doesn't exist
 if (-not (Test-Path $configDir)) {
@@ -324,9 +399,9 @@ try {
 # Test Connection
 # ============================================================
 Write-Host ""
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host "Testing EZPass connection..." -ForegroundColor Cyan
-Write-Host "=" * 70 -ForegroundColor Cyan
+Write-Host ("=" * 70) -ForegroundColor Cyan
 Write-Host ""
 
 try {
@@ -334,12 +409,12 @@ try {
 
     if ($LASTEXITCODE -eq 1 -or $LASTEXITCODE -eq 2 -or $LASTEXITCODE -eq 3) {
         Write-Host ""
-        Write-Host "=" * 70 -ForegroundColor Green
+        Write-Host ("=" * 70) -ForegroundColor Green
         Write-Host "[OK] EZPass connection successful!" -ForegroundColor Green
-        Write-Host "=" * 70 -ForegroundColor Green
+        Write-Host ("=" * 70) -ForegroundColor Green
 
-        # Test email if configured
-        if ($emailChoice -eq "1") {
+        # Test email if configured and updated
+        if ($emailChoice -eq "1" -and $updateEmail -ne "skip") {
             Write-Host ""
             $testEmail = Read-Host "Would you like to send a test email? (yes/no)"
 
@@ -352,7 +427,7 @@ try {
 
                     Write-Host ""
                     Write-Host "[OK] Test email sent!" -ForegroundColor Green
-                    Write-Host "Check your inbox at: $toEmail" -ForegroundColor Cyan
+                    Write-Host "Check your inbox at: $($config.Email.To)" -ForegroundColor Cyan
                 } catch {
                     Write-Host ""
                     Write-Host "WARNING: Test email failed" -ForegroundColor Yellow
@@ -366,8 +441,8 @@ try {
             }
         }
 
-        # Test SMS if configured
-        if ($smsChoice -eq "1") {
+        # Test SMS if configured and updated
+        if ($smsChoice -eq "1" -and $updateSms -ne "skip") {
             Write-Host ""
             $testSms = Read-Host "Would you like to send a test SMS? (yes/no)"
 
@@ -380,7 +455,7 @@ try {
 
                     Write-Host ""
                     Write-Host "[OK] Test SMS sent!" -ForegroundColor Green
-                    Write-Host "Check your phone at: $smsAddress" -ForegroundColor Cyan
+                    Write-Host "Check your phone at: $($config.SMS.To)" -ForegroundColor Cyan
                 } catch {
                     Write-Host ""
                     Write-Host "WARNING: Test SMS failed" -ForegroundColor Yellow
@@ -395,19 +470,19 @@ try {
         }
 
         Write-Host ""
-        Write-Host "=" * 70 -ForegroundColor Green
+        Write-Host ("=" * 70) -ForegroundColor Green
         Write-Host "Setup Complete!" -ForegroundColor Green
-        Write-Host "=" * 70 -ForegroundColor Green
+        Write-Host ("=" * 70) -ForegroundColor Green
         Write-Host ""
         Write-Host "You can now run:" -ForegroundColor Cyan
         Write-Host "  .\check-tolls.ps1 -Estimate       # Check your tolls" -ForegroundColor White
         Write-Host "  .\check-tolls.ps1 -Estimate -SmsFormat  # Check in SMS format" -ForegroundColor White
 
-        if ($emailChoice -eq "1") {
+        if ($config.Email.SmtpServer) {
             Write-Host "  .\notify-email.ps1                # Send email notification" -ForegroundColor White
         }
 
-        if ($smsChoice -eq "1") {
+        if ($config.SMS.To) {
             Write-Host "  .\notify-sms.ps1                  # Send SMS notification" -ForegroundColor White
         }
 
