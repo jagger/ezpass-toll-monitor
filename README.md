@@ -114,7 +114,7 @@ EZPass: [█████░░░] 35/40
 Bronze 20% | 5→Gold +$6.20
 ```
 
-See **[SMS-GUIDE.md](SMS-GUIDE.md)** for complete SMS setup and carrier information.
+See **[NOTIFICATIONS.md](NOTIFICATIONS.md)** for complete setup and carrier information.
 
 ## Command Reference
 
@@ -200,7 +200,7 @@ Reads SMS configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
 - Email configuration (uses email-to-SMS gateways)
 - Mobile carrier's email-to-SMS gateway address
 
-See **[SMS-GUIDE.md](SMS-GUIDE.md)** for complete setup instructions.
+See **[NOTIFICATIONS.md](NOTIFICATIONS.md)** for complete setup instructions.
 
 ### notify-toast.ps1
 
@@ -420,18 +420,14 @@ if ($exitCode -eq 3) {
 **Documentation:**
 - `README.md` - This file
 - `QUICK-START.md` - Quick start guide
-- `NOTIFICATIONS-GUIDE.md` - Email notification setup guide
-- `SMS-GUIDE.md` - SMS notification setup guide
+- `NOTIFICATIONS.md` - Email, SMS, and Toast notification setup
 - `CONFIGURATION.md` - Configuration file reference
-- `IMPROVEMENTS.md` - Recent improvements log
 
 ## See Also
 
 - **[QUICK-START.md](QUICK-START.md)** - Get started in 5 minutes
-- **[NOTIFICATIONS-GUIDE.md](NOTIFICATIONS-GUIDE.md)** - Email notification setup
-- **[SMS-GUIDE.md](SMS-GUIDE.md)** - SMS notification setup and carrier info
+- **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Complete notification setup guide
 - **[CONFIGURATION.md](CONFIGURATION.md)** - Configuration file reference
-- **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Recent feature additions
 
 ## License
 
