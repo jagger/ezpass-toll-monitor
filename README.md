@@ -33,6 +33,7 @@ Maine Turnpike Authority, E-ZPass, and related trademarks are property of their 
 - **Discount Calculations**: Shows actual discounted toll amounts based on your projected tier
 - **Savings Tracking**: Calculates total monthly savings with current discount tier
 - **Email Notifications**: Automated email alerts with error handling
+- **SMS Notifications**: Compact text message alerts via email-to-SMS gateways
 - **Toast Notifications**: Windows 10/11 native notifications
 - **Verbose Logging**: Detailed debugging output with `-Verbose` flag
 - **Data Export**: Save toll CSV files with `-DownloadFile` flag
@@ -48,6 +49,7 @@ Maine Turnpike Authority, E-ZPass, and related trademarks are property of their 
 This will:
 - Prompt for your EZPass credentials (encrypted with Windows DPAPI)
 - Optionally configure email notifications
+- Optionally configure SMS notifications (requires email setup)
 - Save everything to `~\.ezpass\config.xml` (secure, encrypted storage)
 - Test the connection
 - Verify everything works
@@ -99,6 +101,21 @@ To reconfigure email settings, run setup again:
 .\setup.ps1
 ```
 
+### 4. Run SMS Notifications (If Configured)
+
+If you configured SMS during setup:
+```powershell
+.\notify-sms.ps1
+```
+
+SMS format example:
+```
+EZPass: [█████░░░] 35/40
+Bronze 20% | 5→Gold +$6.20
+```
+
+See **[SMS-GUIDE.md](SMS-GUIDE.md)** for complete SMS setup and carrier information.
+
 ## Command Reference
 
 ### check-tolls.ps1
@@ -118,6 +135,7 @@ Main script that fetches and analyzes toll data.
 | `-DownloadFile` | Save CSV to file | `-DownloadFile` |
 | `-SaveConfig` | Save credentials to secure config | `-SaveConfig` |
 | `-EmailOutput` | Format output for email capture | `-EmailOutput` |
+| `-SmsFormat` | Compact SMS-friendly output format | `-SmsFormat` |
 
 **Examples:**
 
@@ -161,6 +179,28 @@ Reads email configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
 - No discount: "EZPass Alert: No Discount - Potential $X.XX savings with Gold"
 - Bronze: "EZPass Alert: Bronze (20%) - $X.XX more with Gold"
 - Gold: "EZPass Alert: Gold (40%) - Saving $X.XX this month!"
+
+### notify-sms.ps1
+
+Wrapper that runs check-tolls.ps1 with SMS format and sends compact text message.
+
+```powershell
+.\notify-sms.ps1
+```
+
+Reads SMS configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
+
+**SMS Format:**
+- Compact progress bar display (under 80 characters)
+- Gold: `EZPass: [████████] 62/40` / `Gold 40% | -$24.80/mo`
+- Bronze: `EZPass: [█████░░░] 35/40` / `Bronze 20% | 5→Gold +$6.20`
+- None: `EZPass: [██░░░░░░] 8/40` / `Est 62 → Gold -$24.80`
+
+**Requirements:**
+- Email configuration (uses email-to-SMS gateways)
+- Mobile carrier's email-to-SMS gateway address
+
+See **[SMS-GUIDE.md](SMS-GUIDE.md)** for complete setup instructions.
 
 ### notify-toast.ps1
 
@@ -369,8 +409,9 @@ if ($exitCode -eq 3) {
 **Scripts:**
 - `check-tolls.ps1` - Main toll checking script
 - `notify-email.ps1` - Email notification wrapper
+- `notify-sms.ps1` - SMS notification wrapper
 - `notify-toast.ps1` - Toast notification wrapper
-- `setup.ps1` - Interactive setup (EZPass credentials + optional email)
+- `setup.ps1` - Interactive setup (EZPass credentials + email + SMS)
 
 **Configuration:**
 - `~\.ezpass\config.xml` - Secure encrypted configuration (created by setup)
@@ -379,13 +420,17 @@ if ($exitCode -eq 3) {
 **Documentation:**
 - `README.md` - This file
 - `QUICK-START.md` - Quick start guide
-- `NOTIFICATIONS-GUIDE.md` - Notification setup guide
+- `NOTIFICATIONS-GUIDE.md` - Email notification setup guide
+- `SMS-GUIDE.md` - SMS notification setup guide
+- `CONFIGURATION.md` - Configuration file reference
 - `IMPROVEMENTS.md` - Recent improvements log
 
 ## See Also
 
 - **[QUICK-START.md](QUICK-START.md)** - Get started in 5 minutes
-- **[NOTIFICATIONS-GUIDE.md](NOTIFICATIONS-GUIDE.md)** - Complete notification setup
+- **[NOTIFICATIONS-GUIDE.md](NOTIFICATIONS-GUIDE.md)** - Email notification setup
+- **[SMS-GUIDE.md](SMS-GUIDE.md)** - SMS notification setup and carrier info
+- **[CONFIGURATION.md](CONFIGURATION.md)** - Configuration file reference
 - **[IMPROVEMENTS.md](IMPROVEMENTS.md)** - Recent feature additions
 
 ## License
