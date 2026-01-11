@@ -526,7 +526,7 @@ if ($SmsFormat) {
         param([int]$current, [int]$target = 40, [int]$width = 8)
         $filled = [Math]::Min([Math]::Floor(($current / $target) * $width), $width)
         $empty = $width - $filled
-        return ('[' + ('█' * $filled) + ('░' * $empty) + ']')
+        return ('[' + ('=' * $filled) + ('-' * $empty) + ']')
     }
 
     # Determine tier
