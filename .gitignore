@@ -1,9 +1,11 @@
 # Sensitive configuration files
 config.xml
-*.json
+config.json
+config.enc
 
 # Session cache
 cookies.xml
+cookies.txt
 
 # CSV data files
 *.csv
@@ -24,3 +26,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Linux/macOS backup files
+*.sh.bak
+
+# Debug files
+*-debug.html

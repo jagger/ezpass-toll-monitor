@@ -1,6 +1,6 @@
 # Maine EZPass Toll Monitor
 
-Automated PowerShell tool to monitor your Maine EZPass toll usage and track discount eligibility.
+Automated tool to monitor your Maine EZPass toll usage and track discount eligibility.
 
 ## Disclaimer
 
@@ -19,6 +19,14 @@ Maine Turnpike Authority, E-ZPass, and related trademarks are property of their 
 - Compliance with EZPass Terms of Service
 - Any actions taken based on the information provided by this tool
 
+## Platform Support
+
+| Platform | Scripts | Status |
+|----------|---------|--------|
+| **Windows** | PowerShell (`.ps1`) | `windows/` directory |
+| **Linux** | Bash (`.sh`) | `linux/` directory |
+| **macOS** | Bash (`.sh`) | `linux/` directory |
+
 ## Discount Tiers
 
 - **0-29 tolls/month**: No discount
@@ -34,16 +42,18 @@ Maine Turnpike Authority, E-ZPass, and related trademarks are property of their 
 - **Savings Tracking**: Calculates total monthly savings with current discount tier
 - **Email Notifications**: Automated email alerts with error handling
 - **SMS Notifications**: Compact text message alerts via email-to-SMS gateways
-- **Toast Notifications**: Windows 10/11 native notifications
-- **Verbose Logging**: Detailed debugging output with `-Verbose` flag
-- **Data Export**: Save toll CSV files with `-DownloadFile` flag
+- **Desktop Notifications**: Windows toast notifications or Linux `notify-send` / macOS `osascript`
+- **Verbose Logging**: Detailed debugging output with `--verbose` flag
+- **Data Export**: Save toll CSV files with `--download` flag
 
 ## Quick Start
 
-### 1. Initial Setup
+### Windows
+
+#### 1. Initial Setup
 
 ```powershell
-.\setup.ps1
+windows\setup.ps1
 ```
 
 This will:
@@ -54,13 +64,53 @@ This will:
 - Test the connection
 - Verify everything works
 
-### 2. Check Current Month
+#### 2. Check Current Month
 
 ```powershell
-.\check-tolls.ps1 -Estimate
+windows\check-tolls.ps1 -Estimate
 ```
 
-Output example:
+#### 3. Run Notifications (If Configured)
+
+```powershell
+windows\notify-email.ps1    # Detailed email report
+windows\notify-sms.ps1      # Compact SMS alert
+windows\notify-toast.ps1    # Windows desktop notification
+```
+
+### Linux / macOS
+
+#### 1. Initial Setup
+
+```bash
+chmod +x linux/*.sh linux/lib/*.sh linux/check-tolls
+linux/setup.sh
+```
+
+This will:
+- Prompt for your EZPass credentials
+- Store credentials securely (macOS Keychain, `pass`, or OpenSSL encrypted file)
+- Optionally configure email notifications
+- Optionally configure SMS notifications (requires email setup)
+- Save non-sensitive settings to `~/.ezpass/config.json`
+- Test the connection
+
+#### 2. Check Current Month
+
+```bash
+linux/check-tolls.sh --estimate
+```
+
+#### 3. Run Notifications (If Configured)
+
+```bash
+linux/notify-email.sh      # Detailed email report
+linux/notify-sms.sh        # Compact SMS alert
+linux/notify-desktop.sh    # Desktop notification (notify-send / osascript)
+```
+
+### Output Example
+
 ```
 ============================================================
 TOLL REPORT FOR 1/2026
@@ -89,26 +139,8 @@ Total Savings This Month: $2.46
 ======================================================================
 ```
 
-### 3. Run Email Notifications (If Configured)
+### SMS Format Example
 
-If you configured email during setup:
-```powershell
-.\notify-email.ps1
-```
-
-To reconfigure email settings, run setup again:
-```powershell
-.\setup.ps1
-```
-
-### 4. Run SMS Notifications (If Configured)
-
-If you configured SMS during setup:
-```powershell
-.\notify-sms.ps1
-```
-
-SMS format example:
 ```
 EZPass: [█████░░░] 35/40
 Bronze 20% | 5→Gold +$6.20
@@ -118,7 +150,7 @@ See **[NOTIFICATIONS.md](NOTIFICATIONS.md)** for complete setup and carrier info
 
 ## Command Reference
 
-### check-tolls.ps1
+### Windows: check-tolls.ps1
 
 Main script that fetches and analyzes toll data.
 
@@ -136,42 +168,79 @@ Main script that fetches and analyzes toll data.
 | `-SaveConfig` | Save credentials to secure config | `-SaveConfig` |
 | `-EmailOutput` | Format output for email capture | `-EmailOutput` |
 | `-SmsFormat` | Compact SMS-friendly output format | `-SmsFormat` |
+| `-VerifyDiscount` | Verify EZPass discount amount | `-VerifyDiscount 24.80 -Month 1 -Year 2026` |
 
 **Examples:**
 
 ```powershell
 # Quick check with estimation
-.\check-tolls.ps1 -Estimate
+windows\check-tolls.ps1 -Estimate
 
 # Check specific month
-.\check-tolls.ps1 -Month 12 -Year 2025
+windows\check-tolls.ps1 -Month 12 -Year 2025
 
 # Verbose output with CSV download
-.\check-tolls.ps1 -Estimate -Verbose -DownloadFile
+windows\check-tolls.ps1 -Estimate -Verbose -DownloadFile
 
 # Save credentials for first time
-.\check-tolls.ps1 -Username "jagger" -Password "yourpass" -SaveConfig
+windows\check-tolls.ps1 -Username "jagger" -Password "yourpass" -SaveConfig
 
-# Check last month
-$lastMonth = (Get-Date).AddMonths(-1)
-.\check-tolls.ps1 -Month $lastMonth.Month -Year $lastMonth.Year
+# Verify EZPass discount statement
+windows\check-tolls.ps1 -VerifyDiscount 24.80 -Month 1 -Year 2026
 ```
 
-**Exit Codes:**
+### Linux/macOS: check-tolls.sh
 
+**Options:**
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--username` | EZPass username | `--username "jagger"` |
+| `--password` | EZPass password | `--password "yourpassword"` |
+| `--month` | Month to check (1-12) | `--month 12` |
+| `--year` | Year to check | `--year 2025` |
+| `--estimate` | Project month-end totals | `--estimate` |
+| `--verbose` | Show detailed debug output | `--verbose` |
+| `--download` | Save CSV to file | `--download` |
+| `--save-config` | Save credentials to secure config | `--save-config` |
+| `--email-output` | Format output for email capture | `--email-output` |
+| `--sms-format` | Compact SMS-friendly output format | `--sms-format` |
+| `--verify-discount` | Verify EZPass discount amount | `--verify-discount 24.80 --month 1 --year 2026` |
+
+**Examples:**
+
+```bash
+# Quick check with estimation
+linux/check-tolls.sh --estimate
+
+# Check specific month
+linux/check-tolls.sh --month 12 --year 2025
+
+# Verbose output with CSV download
+linux/check-tolls.sh --estimate --verbose --download
+
+# Save credentials for first time
+linux/check-tolls.sh --username "jagger" --password "yourpass" --save-config
+
+# Verify EZPass discount statement
+linux/check-tolls.sh --verify-discount 24.80 --month 1 --year 2026
+```
+
+**Exit Codes (both platforms):**
+
+- `0` - Discount verified (match) when using `--verify-discount`
 - `1` - Gold tier (40+ tolls)
 - `2` - Bronze tier (30-39 tolls) OR login/service error
 - `3` - No discount tier (0-29 tolls)
+- `4` - Discount mismatch when using `--verify-discount`
 
-### notify-email.ps1
+### Notification Scripts
 
-Wrapper that runs check-tolls.ps1 and sends results via email.
-
-```powershell
-.\notify-email.ps1
-```
-
-Reads email configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
+| Windows | Linux/macOS | Description |
+|---------|-------------|-------------|
+| `windows\notify-email.ps1` | `linux/notify-email.sh` | Send email report |
+| `windows\notify-sms.ps1` | `linux/notify-sms.sh` | Send SMS alert |
+| `windows\notify-toast.ps1` | `linux/notify-desktop.sh` | Desktop notification |
 
 **Email Subjects:**
 - Service down: "EZPass Monitor - Service Currently Unavailable"
@@ -180,59 +249,17 @@ Reads email configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
 - Bronze: "EZPass Alert: Bronze (20%) - $X.XX more with Gold"
 - Gold: "EZPass Alert: Gold (40%) - Saving $X.XX this month!"
 
-### notify-sms.ps1
-
-Wrapper that runs check-tolls.ps1 with SMS format and sends compact text message.
-
-```powershell
-.\notify-sms.ps1
-```
-
-Reads SMS configuration from `~\.ezpass\config.xml` (created by `setup.ps1`).
-
-**SMS Format:**
-- Compact progress bar display (under 80 characters)
-- Gold: `EZPass: [████████] 62/40` / `Gold 40% | -$24.80/mo`
-- Bronze: `EZPass: [█████░░░] 35/40` / `Bronze 20% | 5→Gold +$6.20`
-- None: `EZPass: [██░░░░░░] 8/40` / `Est 62 → Gold -$24.80`
-
-**Requirements:**
-- Email configuration (uses email-to-SMS gateways)
-- Mobile carrier's email-to-SMS gateway address
-
-See **[NOTIFICATIONS.md](NOTIFICATIONS.md)** for complete setup instructions.
-
-### notify-toast.ps1
-
-Shows Windows toast notifications with toll status.
-
-```powershell
-.\notify-toast.ps1
-
-# Only notify for specific tiers
-.\notify-toast.ps1 -OnlyAlertOnTiers "Bronze,Gold"
-```
-
 ## Session Caching
 
 The tool automatically caches your login session for 10 minutes to prevent "account already logged in" errors when running multiple times.
 
-**Cache location:** `~\.ezpass\cookies.xml`
+**Windows cache location:** `~\.ezpass\cookies.xml`
+**Linux/macOS cache location:** `~/.ezpass/cookies.txt`
 
 **How it works:**
 - First run: Logs in and saves session cookies
 - Subsequent runs (within 10 min): Reuses cached session, no login needed
 - After 10 min: Cache expires, performs fresh login
-
-**Verbose output:**
-```powershell
-.\check-tolls.ps1 -Verbose -Estimate
-
-# Shows:
-[VERBOSE] Loaded 1 cached cookies (age: 45.2s)
-Using cached session...
-Fetching toll data for 1/2026...
-```
 
 ## Error Handling
 
@@ -247,24 +274,13 @@ This is likely due to maintenance or technical issues on their end.
 Please try again later (in 30 minutes to a few hours).
 ```
 
-Email subject: "EZPass Monitor - Service Currently Unavailable"
-
 ### Login Conflicts
 
-If your account is already logged in elsewhere:
+If your account is already logged in elsewhere, the script automatically waits 90 seconds and retries. Future runs within 10 minutes use the cached session to avoid this.
 
-```
-WARNING: Account is already logged in from another session.
-The EZPass system only allows one active session at a time.
+## Automation
 
-Waiting 90 seconds for the session to timeout, then retrying...
-```
-
-The script automatically waits and retries. Future runs within 10 minutes use cached session to avoid this.
-
-## Automation with Task Scheduler
-
-### Weekly Email Reports
+### Windows: Task Scheduler
 
 1. Open Task Scheduler (`taskschd.msc`)
 2. Create Basic Task:
@@ -272,51 +288,38 @@ The script automatically waits and retries. Future runs within 10 minutes use ca
    - **Trigger:** Weekly, Fridays at 6:00 PM
    - **Action:** Start a program
    - **Program:** `powershell.exe`
-   - **Arguments:** `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Users\jagge\Documents\tolls\prod\notify-email.ps1"`
-   - **Start in:** `C:\Users\jagge\Documents\tolls\prod`
+   - **Arguments:** `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\path\to\windows\notify-email.ps1"`
+   - **Start in:** `C:\path\to\windows`
 
-### Daily Checks (Advanced)
+### Linux/macOS: cron
 
-For daily monitoring, use Task Scheduler with conditional email:
+Add a cron job for weekly email reports:
 
-```powershell
-# Script: daily-check.ps1
-cd C:\Users\jagge\Documents\tolls\prod
+```bash
+# Edit crontab
+crontab -e
 
-$output = .\check-tolls.ps1 -Estimate -EmailOutput
-$exitCode = $LASTEXITCODE
+# Add weekly Friday 6 PM report
+0 18 * * 5 /path/to/linux/notify-email.sh >> /tmp/ezpass-cron.log 2>&1
 
-# Only send email if below Gold tier or error occurred
-if ($exitCode -ne 1) {
-    .\notify-email.ps1
-}
+# Add daily check (only sends if not Gold tier)
+0 18 * * * /path/to/linux/check-tolls.sh --estimate > /dev/null 2>&1 || /path/to/linux/notify-email.sh >> /tmp/ezpass-cron.log 2>&1
 ```
 
 ## Troubleshooting
 
-### Execution Policy Error
+### Windows: Execution Policy Error
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-Or run with bypass:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\check-tolls.ps1 -Estimate
-```
-
 ### Login Fails
 
 1. Verify credentials at https://ezpassmaineturnpike.com
-2. Check if session cache is corrupted: Delete `~\.ezpass\cookies.xml`
+2. Delete session cache: `~\.ezpass\cookies.xml` (Windows) or `~/.ezpass/cookies.txt` (Linux/macOS)
 3. Wait 5 minutes if "already logged in" error persists
-4. Run `.\setup.ps1` to reconfigure credentials
-
-### No Toll Data
-
-- Ensure you have tolls for the specified month
-- Try with `-Verbose` to see detailed debug output
-- Run `.\setup.ps1` to verify credentials are configured correctly
+4. Run setup again to reconfigure credentials
 
 ### Email Not Sending
 
@@ -329,103 +332,56 @@ powershell -ExecutionPolicy Bypass -File .\check-tolls.ps1 -Estimate
 - Outlook/Hotmail: `smtp.office365.com:587`
 - Yahoo: `smtp.mail.yahoo.com:587` (requires app password)
 
-Run `.\setup.ps1` and configure email settings.
-
 ## Configuration Files
 
-### ~\.ezpass\config.xml
+### Windows: ~\.ezpass\config.xml
 
 Secure configuration file encrypted with Windows Data Protection API (DPAPI).
 
-**Location:** `C:\Users\[YourUsername]\.ezpass\config.xml`
+### Linux/macOS: ~/.ezpass/config.json + credential store
 
-**Structure:**
-```powershell
-@{
-    EZPass = @{
-        Username = "your_ezpass_username"
-        Password = <SecureString encrypted by DPAPI>
-    }
-    Email = @{
-        SmtpServer = "smtp.gmail.com"
-        Port = 587
-        From = "your-email@gmail.com"
-        To = "your-email@gmail.com"
-        Username = "your-email@gmail.com"
-        Password = <SecureString encrypted by DPAPI>
-        UseSsl = $true
-        OnlyAlertOnTiers = ""
-    }
-}
-```
+Non-sensitive settings stored in plaintext JSON. Credentials stored via:
+- **macOS**: Keychain (`security` command)
+- **Linux**: `pass` (standard Unix password manager) if available
+- **Fallback**: OpenSSL AES-256-CBC encrypted file (`~/.ezpass/config.enc`)
 
-**Security Note:** Credentials are encrypted using Windows DPAPI and can only be decrypted by your Windows user account. This file is automatically created by `.\setup.ps1`.
-
-## Advanced Usage
-
-### Download and Inspect CSV Data
-
-```powershell
-.\check-tolls.ps1 -DownloadFile -Verbose
-
-# Creates: toll-data-MM-YYYY.csv
-```
-
-CSV format:
-```csv
-"Posting Date","Tag/Vehicle Reg.","Transaction Date","Transaction Time","Facility","Entry/Barrier Plaza","Exit Plaza","Toll","Discount Eligible?"
-"01/03/2026","012345678901","01/03/2026","15:23:46","MeTA","Crabapple Cove (77)","Derry (181)","$.80","Yes"
-```
-
-### Custom Notification Scripts
-
-Create your own notification wrapper:
-
-```powershell
-# my-custom-alert.ps1
-$result = .\check-tolls.ps1 -Estimate -EmailOutput
-$exitCode = $LASTEXITCODE
-
-if ($exitCode -eq 3) {
-    # Custom logic for no discount tier
-    Write-Host "WARNING: Below 30 tolls!" -ForegroundColor Red
-    # Send SMS, webhook, etc.
-}
-```
-
-## How It Works
-
-1. **Login**: Connects to EZPass Maine website with your credentials
-2. **Session**: Saves session cookies to avoid repeated logins
-3. **Fetch**: Downloads toll data as CSV via API
-4. **Parse**: Processes CSV to extract toll transactions
-5. **Analyze**: Counts discount-eligible tolls and calculates tier
-6. **Estimate**: Projects month-end totals based on daily average
-7. **Display**: Shows detailed report with discounted amounts
-8. **Notify**: Sends email/toast notification if configured
+See **[CONFIGURATION.md](CONFIGURATION.md)** for full details.
 
 ## Files
 
-**Scripts:**
-- `check-tolls.ps1` - Main toll checking script
-- `notify-email.ps1` - Email notification wrapper
-- `notify-sms.ps1` - SMS notification wrapper
-- `notify-toast.ps1` - Toast notification wrapper
-- `setup.ps1` - Interactive setup (EZPass credentials + email + SMS)
+```
+EzPassMonitor/
+├── windows/                    # Windows PowerShell scripts
+│   ├── check-tolls.bat         # Double-click launcher
+│   ├── check-tolls.ps1         # Main toll checking script
+│   ├── setup.ps1               # Interactive setup wizard
+│   ├── notify-email.ps1        # Email notification wrapper
+│   ├── notify-sms.ps1          # SMS notification wrapper
+│   └── notify-toast.ps1        # Windows toast notifications
+├── linux/                      # Linux/macOS Bash scripts
+│   ├── lib/
+│   │   └── credentials.sh      # Credential storage helper
+│   ├── check-tolls             # Quick launcher
+│   ├── check-tolls.sh          # Main toll checking script
+│   ├── setup.sh                # Interactive setup wizard
+│   ├── notify-email.sh         # Email notification wrapper
+│   ├── notify-sms.sh           # SMS notification wrapper
+│   └── notify-desktop.sh       # Desktop notifications
+├── README.md                   # This file
+├── QUICK-START.md              # Quick start guide
+├── NOTIFICATIONS.md            # Notification setup guide
+├── CONFIGURATION.md            # Configuration reference
+├── LICENSE                     # GNU GPL v3.0
+└── .gitignore
+```
 
-**Configuration:**
-- `~\.ezpass\config.xml` - Secure encrypted configuration (created by setup)
-- `~\.ezpass\cookies.xml` - Session cache (auto-generated, 10-min TTL)
-
-**Documentation:**
-- `README.md` - This file
-- `QUICK-START.md` - Quick start guide
-- `NOTIFICATIONS.md` - Email, SMS, and Toast notification setup
-- `CONFIGURATION.md` - Configuration file reference
+**Runtime configuration (not in repo):**
+- Windows: `~\.ezpass\config.xml`, `~\.ezpass\cookies.xml`
+- Linux/macOS: `~/.ezpass/config.json`, `~/.ezpass/config.enc`, `~/.ezpass/cookies.txt`
 
 ## See Also
 
-- **[QUICK-START.md](QUICK-START.md)** - Get started in 5 minutes
+- **[QUICK-START.md](QUICK-START.md)** - Get started quickly
 - **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Complete notification setup guide
 - **[CONFIGURATION.md](CONFIGURATION.md)** - Configuration file reference
 

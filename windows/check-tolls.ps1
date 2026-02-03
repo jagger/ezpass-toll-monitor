@@ -30,6 +30,12 @@ Save credentials to config file
 .PARAMETER DownloadFile
 Save CSV data to file for troubleshooting (toll-data-MM-YYYY.csv)
 
+.PARAMETER VerifyDiscount
+Verify an EZPass discount amount against calculated data (e.g., 24.80)
+
+.EXAMPLE
+.\check-tolls.ps1 -VerifyDiscount 24.80 -Month 1 -Year 2026
+
 .EXAMPLE
 .\check-tolls.ps1 -Username "jagger" -Password "yourpassword" -Estimate
 
@@ -50,7 +56,8 @@ param(
     [switch]$SaveConfig,
     [switch]$EmailOutput,
     [switch]$DownloadFile,
-    [switch]$SmsFormat
+    [switch]$SmsFormat,
+    [decimal]$VerifyDiscount
 )
 
 # Secure config location in user home directory
@@ -138,6 +145,12 @@ if (-not $Month) { $Month = $now.Month }
 
 # Convert to 0-indexed month for API (0=January, 11=December)
 $monthIndex = $Month - 1
+
+$verifyMode = $PSBoundParameters.ContainsKey('VerifyDiscount')
+if ($verifyMode -and $VerifyDiscount -lt 0) {
+    Write-Host "Error: -VerifyDiscount requires a non-negative amount" -ForegroundColor Red
+    exit 1
+}
 
 if ($Verbose) {
     Write-Host "[VERBOSE] Target period: $Month/$Year (API month index: $monthIndex)" -ForegroundColor Gray
@@ -569,6 +582,49 @@ if ($SmsFormat) {
         exit 2
     } else {
         exit 3
+    }
+}
+
+# Verify Discount Mode
+if ($verifyMode) {
+    $verifyTier = Get-DiscountTier -tollCount $discountEligible
+
+    $discountPctNum = 0.0
+    if ($verifyTier.Tier -eq 'Gold') { $discountPctNum = 0.40 }
+    elseif ($verifyTier.Tier -eq 'Bronze') { $discountPctNum = 0.20 }
+
+    $expectedDiscount = [Math]::Round($totalAmount * $discountPctNum, 2)
+    $providedDiscount = [Math]::Round($VerifyDiscount, 2)
+    $difference = [Math]::Round($providedDiscount - $expectedDiscount, 2)
+    $absDifference = [Math]::Abs($difference)
+    $isMatch = $absDifference -lt 0.015
+
+    Write-Output-Line ""
+    Write-Output-Line ("=" * 60) "Cyan"
+    Write-Output-Line "DISCOUNT VERIFICATION FOR $Month/$Year" "White"
+    Write-Output-Line ("=" * 60) "Cyan"
+    Write-Output-Line ""
+    Write-Output-Line "Discount-eligible tolls:  $discountEligible"
+    Write-Output-Line ("Discount tier:            {0} ({1}%)" -f $verifyTier.Tier, ($discountPctNum * 100))
+    Write-Output-Line ("Eligible toll total:      `${0:N2}" -f $totalAmount)
+    Write-Output-Line ""
+    Write-Output-Line ("-" * 60) "Cyan"
+    Write-Output-Line ("Expected discount:        `${0:N2}" -f $expectedDiscount)
+    Write-Output-Line ("EZPass stated discount:   `${0:N2}" -f $providedDiscount)
+    Write-Output-Line ("-" * 60) "Cyan"
+
+    if ($isMatch) {
+        Write-Output-Line "" "Green"
+        Write-Output-Line ">> MATCH: Discount amount verified successfully." "Green"
+        Write-Output-Line "" "Green"
+        exit 0
+    } else {
+        $direction = if ($difference -gt 0) { "EZPass charged MORE than expected by" } else { "EZPass charged LESS than expected by" }
+        Write-Output-Line "" "Red"
+        Write-Output-Line (">> MISMATCH: {0} `${1:N2}" -f $direction, $absDifference) "Red"
+        Write-Output-Line "   Review toll details with -Verbose for discrepancies." "Yellow"
+        Write-Output-Line "" "Red"
+        exit 4
     }
 }
 

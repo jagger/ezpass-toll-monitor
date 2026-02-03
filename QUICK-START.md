@@ -1,17 +1,19 @@
 # Quick Start Guide
 
-Get started monitoring your Maine EZPass tolls in 5 minutes.
+Get started monitoring your Maine EZPass tolls.
 
-## Setup (One Time)
+## Windows
 
-Open PowerShell in this folder and run:
+### Setup (One Time)
+
+Open PowerShell in the `windows/` folder and run:
 
 ```powershell
 .\setup.ps1
 ```
 
 This interactive wizard will:
-1. Configure your EZPass credentials (encrypted)
+1. Configure your EZPass credentials (encrypted with DPAPI)
 2. Optionally setup email notifications
 3. Optionally setup SMS notifications
 4. Test the connection
@@ -19,36 +21,90 @@ This interactive wizard will:
 
 **For Gmail users:** You'll need to create an App Password (requires 2FA enabled).
 
-## Daily Use
-
-### Quick Check
+### Daily Use
 
 **Easy way** - Double-click:
 ```
-check-tolls.bat
+windows\check-tolls.bat
 ```
 
 **PowerShell way:**
 ```powershell
-.\check-tolls.ps1 -Estimate
+windows\check-tolls.ps1 -Estimate
 ```
 
 ### Send Notifications
 
-**Email (detailed report):**
 ```powershell
-.\notify-email.ps1
+windows\notify-email.ps1    # Email (detailed report)
+windows\notify-sms.ps1      # SMS (compact alert)
+windows\notify-toast.ps1    # Windows Toast notification
 ```
 
-**SMS (compact alert):**
-```powershell
-.\notify-sms.ps1
+### Automation
+
+Set up weekly email reports using Windows Task Scheduler:
+
+1. Open Task Scheduler (`Win+R` → `taskschd.msc`)
+2. Create Basic Task
+3. **Trigger:** Weekly, Friday at 6 PM
+4. **Action:** Start a program
+   - Program: `powershell.exe`
+   - Arguments: `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\path\to\windows\notify-email.ps1"`
+
+---
+
+## Linux / macOS
+
+### Setup (One Time)
+
+```bash
+chmod +x linux/*.sh linux/lib/*.sh linux/check-tolls
+linux/setup.sh
 ```
 
-**Windows Toast:**
-```powershell
-.\notify-toast.ps1
+This interactive wizard will:
+1. Configure your EZPass credentials (stored via macOS Keychain, `pass`, or OpenSSL)
+2. Optionally setup email notifications
+3. Optionally setup SMS notifications
+4. Test the connection
+5. Save settings to `~/.ezpass/config.json`
+
+**For Gmail users:** You'll need to create an App Password (requires 2FA enabled).
+
+### Daily Use
+
+**Quick launcher:**
+```bash
+linux/check-tolls
 ```
+
+**Full options:**
+```bash
+linux/check-tolls.sh --estimate
+```
+
+### Send Notifications
+
+```bash
+linux/notify-email.sh      # Email (detailed report)
+linux/notify-sms.sh        # SMS (compact alert)
+linux/notify-desktop.sh    # Desktop notification (notify-send / osascript)
+```
+
+### Automation
+
+Set up weekly email reports using cron:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add weekly Friday 6 PM report
+0 18 * * 5 /path/to/linux/notify-email.sh >> /tmp/ezpass-cron.log 2>&1
+```
+
+---
 
 ## Understanding Your Status
 
@@ -85,50 +141,37 @@ EZPass: [█████░░░] 35/40
 Bronze 20% | 5→Gold +$6.20
 ```
 
-## Automation
-
-Set up weekly email reports using Windows Task Scheduler:
-
-1. Open Task Scheduler (`Win+R` → `taskschd.msc`)
-2. Create Basic Task
-3. **Trigger:** Weekly, Friday at 6 PM
-4. **Action:** Start a program
-   - Program: `powershell.exe`
-   - Arguments: `-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\path\to\notify-email.ps1"`
-
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `setup.ps1` | Interactive configuration wizard |
-| `check-tolls.ps1` | Main toll checking script |
-| `check-tolls.bat` | Double-click launcher |
-| `notify-email.ps1` | Email notifications |
-| `notify-sms.ps1` | SMS notifications |
-| `notify-toast.ps1` | Desktop notifications |
-| `~\.ezpass\config.xml` | Your encrypted settings |
-
-## Next Steps
-
-- **Automation:** Set up Task Scheduler for weekly reports
-- **Notifications:** See `NOTIFICATIONS.md` for detailed setup
-- **Configuration:** See `CONFIGURATION.md` for advanced options
-- **Full Docs:** See `README.md` for complete documentation
+| Windows | Linux/macOS | Purpose |
+|---------|-------------|---------|
+| `windows\setup.ps1` | `linux/setup.sh` | Interactive configuration wizard |
+| `windows\check-tolls.ps1` | `linux/check-tolls.sh` | Main toll checking script |
+| `windows\check-tolls.bat` | `linux/check-tolls` | Quick launcher |
+| `windows\notify-email.ps1` | `linux/notify-email.sh` | Email notifications |
+| `windows\notify-sms.ps1` | `linux/notify-sms.sh` | SMS notifications |
+| `windows\notify-toast.ps1` | `linux/notify-desktop.sh` | Desktop notifications |
+| `~\.ezpass\config.xml` | `~/.ezpass/config.json` | Your settings |
 
 ## Troubleshooting
 
-**Can't run scripts?**
+**Windows - Can't run scripts?**
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
+**Linux - Permission denied?**
+```bash
+chmod +x linux/*.sh linux/lib/*.sh linux/check-tolls
+```
+
 **Email not sending?**
 - Gmail: Use App Password, not regular password
-- Run `.\setup.ps1` to reconfigure
+- Run setup again to reconfigure
 
 **Wrong toll counts?**
 - Verify credentials at https://ezpassmaineturnpike.com
-- Run `.\setup.ps1` to update credentials
+- Run setup again to update credentials
 
 **Need help?**
 - Check `README.md` for detailed documentation

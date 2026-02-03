@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            # First release - use all commits
+            NOTES=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            NOTES=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
+          fi
+
+          # Write to file for multi-line output
+          echo "$NOTES" > release-notes.txt
+
+      - name: Package Windows release
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          mkdir -p "ezpass-monitor-windows-${VERSION}"
+          cp -r windows/ "ezpass-monitor-windows-${VERSION}/windows/"
+          cp README.md QUICK-START.md CONFIGURATION.md NOTIFICATIONS.md LICENSE "ezpass-monitor-windows-${VERSION}/"
+          zip -r "ezpass-monitor-windows-${VERSION}.zip" "ezpass-monitor-windows-${VERSION}/"
+
+      - name: Package Linux release
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          mkdir -p "ezpass-monitor-linux-${VERSION}"
+          cp -r linux/ "ezpass-monitor-linux-${VERSION}/linux/"
+          cp README.md QUICK-START.md CONFIGURATION.md NOTIFICATIONS.md LICENSE "ezpass-monitor-linux-${VERSION}/"
+          chmod +x "ezpass-monitor-linux-${VERSION}"/linux/*.sh "ezpass-monitor-linux-${VERSION}"/linux/lib/*.sh "ezpass-monitor-linux-${VERSION}"/linux/check-tolls
+          tar czf "ezpass-monitor-linux-${VERSION}.tar.gz" "ezpass-monitor-linux-${VERSION}/"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          body_path: release-notes.txt
+          generate_release_notes: true
+          files: |
+            ezpass-monitor-windows-${{ steps.version.outputs.VERSION }}.zip
+            ezpass-monitor-linux-${{ steps.version.outputs.VERSION }}.tar.gz

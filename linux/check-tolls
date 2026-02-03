@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Quick launcher for EZPass Toll Monitor
+# Equivalent of check-tolls.bat for Linux/macOS
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${SCRIPT_DIR}/check-tolls.sh" --estimate "$@"
