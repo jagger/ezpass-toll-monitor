@@ -418,8 +418,35 @@ try {
     exit 2
 }
 
-# Parse CSV data (much cleaner than HTML!)
+# Validate and parse CSV data
 $csvData = $csvResponse.Content
+
+# Check for HTML response (indicates login failure or redirect)
+if ($csvData -match '(?i)<html|<!DOCTYPE') {
+    Write-Host "Error: Received HTML instead of CSV data (possible login failure)" -ForegroundColor Red
+    if ($Verbose) {
+        $debugFile = "csv-debug.html"
+        $csvData | Set-Content -Path $debugFile -Encoding UTF8
+        Write-Host "[VERBOSE] HTML response saved to: $debugFile" -ForegroundColor Gray
+    }
+    exit 2
+}
+
+# Check minimum response length
+if ($csvData.Length -lt 50) {
+    Write-Host "Error: CSV response too short ($($csvData.Length) bytes) - no data returned" -ForegroundColor Red
+    exit 2
+}
+
+# Check for expected CSV headers
+if ($csvData -notmatch 'Transaction Date') {
+    Write-Host "Error: CSV response missing expected headers" -ForegroundColor Red
+    if ($Verbose) {
+        $firstLine = ($csvData -split "`n")[0]
+        Write-Host "[VERBOSE] First line of response: $firstLine" -ForegroundColor Gray
+    }
+    exit 2
+}
 
 # Save CSV to file if requested
 if ($DownloadFile) {

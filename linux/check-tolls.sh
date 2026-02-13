@@ -341,6 +341,29 @@ csv_data=$(curl -s -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
 
 vlog "CSV content length: ${#csv_data} bytes"
 
+# Validate CSV response
+if echo "$csv_data" | head -1 | grep -qi '<html\|<!DOCTYPE'; then
+    color_echo red "Error: Received HTML instead of CSV data (possible login failure)"
+    if $VERBOSE; then
+        echo "$csv_data" > csv-debug.html
+        vlog "HTML response saved to: csv-debug.html"
+    fi
+    exit 2
+fi
+
+if [[ ${#csv_data} -lt 50 ]]; then
+    color_echo red "Error: CSV response too short (${#csv_data} bytes) - no data returned"
+    exit 2
+fi
+
+if ! echo "$csv_data" | head -1 | grep -qi 'Transaction Date'; then
+    color_echo red "Error: CSV response missing expected headers"
+    if $VERBOSE; then
+        vlog "First line of response: $(echo "$csv_data" | head -1)"
+    fi
+    exit 2
+fi
+
 # Save CSV to file if requested
 if $DOWNLOAD_FILE; then
     csv_filename="toll-data-${MONTH}-${YEAR}.csv"
@@ -350,63 +373,51 @@ fi
 
 vlog "Parsing CSV data..."
 
-# Parse CSV data using awk
+# Parse CSV data using python3 csv module for proper RFC 4180 handling
+# (awk -F',' cannot handle quoted fields containing commas, e.g. "Exit 44, Scarborough")
 # CSV columns: "Posting Date","Tag/Vehicle Reg.","Transaction Date","Transaction Time",
 #              "Facility","Entry/Barrier Plaza","Exit Plaza","Toll","Discount Eligible?"
 
-# We use awk to properly handle quoted CSV fields
-parse_result=$(echo "$csv_data" | awk -F',' '
-BEGIN {
-    total_tolls = 0
-    discount_eligible = 0
-    total_amount = 0.0
-    detail_count = 0
-}
+parse_result=$(echo "$csv_data" | python3 -c '
+import csv, sys, re
 
-# Skip header row
-NR == 1 { next }
+reader = csv.DictReader(sys.stdin)
+total_tolls = 0
+discount_eligible = 0
+total_amount = 0.0
 
-{
-    # Remove surrounding quotes from fields
-    for (i = 1; i <= NF; i++) {
-        gsub(/^"/, "", $i)
-        gsub(/"$/, "", $i)
-    }
+for row in reader:
+    trans_date = (row.get("Transaction Date") or "").strip()
+    amount_str = (row.get("Toll") or "").strip()
+    if not trans_date or not amount_str:
+        continue
 
-    posting_date = $1
-    tag = $2
-    trans_date = $3
-    trans_time = $4
-    facility = $5
-    entry = $6
-    exit_plaza = $7
-    amount_str = $8
-    eligible_text = $9
-
-    # Skip non-data rows
-    if (trans_date == "" || amount_str == "") next
-
-    total_tolls++
+    total_tolls += 1
+    posting_date = (row.get("Posting Date") or "").strip()
+    trans_time = (row.get("Transaction Time") or "").strip()
+    facility = (row.get("Facility") or "").strip()
+    entry = (row.get("Entry/Barrier Plaza") or "").strip()
+    exit_plaza = (row.get("Exit Plaza") or "").strip()
+    eligible = (row.get("Discount Eligible?") or "").strip()
 
     # Parse amount - handle "$0.80" and "$.80" formats
-    amount = amount_str
-    gsub(/\$/, "", amount)
-    if (substr(amount, 1, 1) == ".") amount = "0" amount
-    amount = amount + 0.0
+    amt = re.sub(r"^\$", "", amount_str)
+    if amt.startswith("."):
+        amt = "0" + amt
+    try:
+        amount = float(amt)
+    except ValueError:
+        amount = 0.0
 
-    if (eligible_text == "Yes") {
-        discount_eligible++
+    if eligible == "Yes":
+        discount_eligible += 1
         total_amount += amount
-    }
 
-    # Store detail
-    detail_count++
-    printf "DETAIL|%s|%s %s|%s|%s|%s|%.2f|%s|%s\n", posting_date, trans_date, trans_time, facility, entry, exit_plaza, amount, amount_str, eligible_text
-}
+    print("DETAIL|%s|%s %s|%s|%s|%s|%.2f|%s|%s" % (
+        posting_date, trans_date, trans_time, facility, entry, exit_plaza,
+        amount, amount_str, eligible))
 
-END {
-    printf "SUMMARY|%d|%d|%.2f\n", total_tolls, discount_eligible, total_amount
-}
+print("SUMMARY|%d|%d|%.2f" % (total_tolls, discount_eligible, total_amount))
 ')
 
 # Extract summary line
