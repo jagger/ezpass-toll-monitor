@@ -389,6 +389,9 @@ if ($loginResponse.Content -match 'ProcessLogout\.do') {
     Write-Host "Error: Login failed - invalid credentials or unexpected response" -ForegroundColor Red
     exit 2
 }
+    # Visit Summary.do to complete post-login session setup
+    if ($Verbose) { Write-Host "[VERBOSE] Visiting Summary page to warm up session..." -ForegroundColor Gray }
+    Invoke-WebRequest -Uri "$baseUrl/EZPass/Summary.do" -WebSession $session -UseBasicParsing | Out-Null
 } # End of login block (if not using cached session)
 
 # Fetch toll data as CSV (cleaner than HTML scraping)

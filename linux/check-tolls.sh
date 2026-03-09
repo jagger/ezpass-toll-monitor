@@ -264,7 +264,7 @@ if ! $use_cached_session; then
 
     LOGIN_URL="${BASE_URL}/EZPass/ProcessLogin.do"
 
-    login_response=$(curl -s -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
+    login_response=$(curl -s -L -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
         -o - -w "\n%{http_code}" \
         -X POST "$LOGIN_URL" \
         --data-urlencode "${token_name}=${token_value}" \
@@ -299,7 +299,7 @@ if ! $use_cached_session; then
         token_value=$(echo "$login_page" | grep -oP 'name="token_[^"]+"\s+value="([^"]+)"' | head -1 | sed 's/.*value="//;s/"//')
 
         if [[ -n "$token_name" && -n "$token_value" ]]; then
-            login_response=$(curl -s -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
+            login_response=$(curl -s -L -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
                 -o - -w "\n%{http_code}" \
                 -X POST "$LOGIN_URL" \
                 --data-urlencode "${token_name}=${token_value}" \
@@ -323,6 +323,11 @@ if ! $use_cached_session; then
         color_echo red "Error: Login failed - invalid credentials or unexpected response"
         exit 2
     fi
+    # Visit Summary.do to complete post-login session setup
+    vlog "Visiting Summary page to warm up session..."
+    curl -s -L -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
+        -o /dev/null \
+        "${BASE_URL}/EZPass/Summary.do"
 fi
 
 # Fetch toll data as CSV
